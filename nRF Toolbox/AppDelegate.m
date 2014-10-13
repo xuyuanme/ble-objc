@@ -21,6 +21,18 @@
     NSDictionary* defaults = [NSDictionary dictionaryWithObjects:@[@"2.3", [NSNumber numberWithInt:10]] forKeys:@[@"key_diameter", @"dfu_number_of_packets"]];
     [[NSUserDefaults standardUserDefaults] registerDefaults:defaults];
     
+    // Fix notification issue for iOS8
+    if ([UIApplication instancesRespondToSelector:@selector(registerUserNotificationSettings:)])
+    {
+        [[UIApplication sharedApplication] registerUserNotificationSettings:[UIUserNotificationSettings settingsForTypes:(UIUserNotificationTypeSound | UIUserNotificationTypeAlert | UIUserNotificationTypeBadge) categories:nil]];
+        [[UIApplication sharedApplication] registerForRemoteNotifications];
+    }
+    else
+    {
+        [[UIApplication sharedApplication] registerForRemoteNotificationTypes:
+         (UIUserNotificationTypeBadge | UIUserNotificationTypeSound | UIUserNotificationTypeAlert)];
+    }
+    
     return YES;
 }
 
@@ -38,6 +50,17 @@
     [navigationController pushViewController:dfuvc animated:YES];
     
     return YES;
+}
+
+// Please also ensure the push cert is used for the app bundle id
+- (void)application:(UIApplication*)application didRegisterForRemoteNotificationsWithDeviceToken:(NSData*)deviceToken
+{
+    const unsigned *tokenBytes = [deviceToken bytes];
+    NSString *hexToken = [NSString stringWithFormat:@"%08x%08x%08x%08x%08x%08x%08x%08x",
+                          ntohl(tokenBytes[0]), ntohl(tokenBytes[1]), ntohl(tokenBytes[2]),
+                          ntohl(tokenBytes[3]), ntohl(tokenBytes[4]), ntohl(tokenBytes[5]),
+                          ntohl(tokenBytes[6]), ntohl(tokenBytes[7])];
+    NSLog(@"My token is: %@", hexToken);
 }
 							
 - (void)applicationWillResignActive:(UIApplication *)application
