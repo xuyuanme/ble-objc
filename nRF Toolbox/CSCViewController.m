@@ -305,6 +305,11 @@ const uint8_t CRANK_REVOLUTION_FLAG = 0x02;
     });
 }
 
+- (void)peripheral:(CBPeripheral *)peripheral didModifyServices:(NSArray *)invalidatedServices {
+    NSLog(@"******************Service Invalidated******************");
+    [bluetoothManager cancelPeripheralConnection:peripheral];
+}
+
 -(void)decodeCSCData:(NSData *)data
 {
     NSLog(@"decodeCSCData");
