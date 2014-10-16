@@ -20,6 +20,9 @@
     double travelDistance, oldWheelEventTime, totalTravelDistance, oldCrankEventTime;
     double wheelCircumference;
     BOOL isBackButtonPressed;
+    int peripheralReconnectTime;
+    BOOL peripheralConnected;
+    BOOL peripheralDisconnectedByUser;
 }
 
 /*!
@@ -88,6 +91,10 @@ const uint8_t CRANK_REVOLUTION_FLAG = 0x02;
     wheelCircumference = [[[NSUserDefaults standardUserDefaults] valueForKey:@"key_diameter"] doubleValue];
     NSLog(@"circumference: %f",wheelCircumference);
     isBackButtonPressed = YES;
+    
+    peripheralReconnectTime = 0;
+    peripheralConnected = FALSE;
+    peripheralDisconnectedByUser = FALSE;
 }
 
 - (void)didReceiveMemoryWarning
@@ -130,6 +137,7 @@ const uint8_t CRANK_REVOLUTION_FLAG = 0x02;
     if (cyclePeripheral != nil)
     {
         [bluetoothManager cancelPeripheralConnection:cyclePeripheral];
+        peripheralDisconnectedByUser = TRUE;
     }
 }
 
@@ -166,8 +174,11 @@ const uint8_t CRANK_REVOLUTION_FLAG = 0x02;
     // The sensor has been selected, connect to it
     cyclePeripheral = peripheral;
     cyclePeripheral.delegate = self;
-    NSDictionary *options = [NSDictionary dictionaryWithObject:[NSNumber numberWithBool:YES] forKey:CBConnectPeripheralOptionNotifyOnNotificationKey];
-    [bluetoothManager connectPeripheral:cyclePeripheral options:options];
+    [bluetoothManager connectPeripheral:cyclePeripheral options:@{
+                                                                  CBCentralManagerOptionShowPowerAlertKey: @YES,
+                                                                  CBConnectPeripheralOptionNotifyOnDisconnectionKey: @YES,
+                                                                  CBConnectPeripheralOptionNotifyOnNotificationKey: @YES
+                                                                  }];
 }
 
 #pragma mark Central Manager delegate methods
@@ -176,6 +187,7 @@ const uint8_t CRANK_REVOLUTION_FLAG = 0x02;
 {
     if (central.state == CBCentralManagerStatePoweredOn) {
         // TODO
+        NSLog(@"******************centralManagerDidUpdateState: Bluetooth is ON******************");
     }
     else
     {
@@ -186,6 +198,10 @@ const uint8_t CRANK_REVOLUTION_FLAG = 0x02;
 
 - (void)centralManager:(CBCentralManager *)central didConnectPeripheral:(CBPeripheral *)peripheral
 {
+    [[NSUserDefaults standardUserDefaults] setObject:[peripheral.identifier UUIDString] forKey:lastConnectedPeripheralKey];
+    peripheralConnected = TRUE;
+    peripheralDisconnectedByUser = FALSE;
+    
     // Scanner uses other queue to send events. We must edit UI in the main queue
     dispatch_async(dispatch_get_main_queue(), ^{
         [deviceName setText:peripheral.name];
@@ -211,17 +227,69 @@ const uint8_t CRANK_REVOLUTION_FLAG = 0x02;
     });
 }
 
+- (void)peripheral:(CBPeripheral *)peripheral didModifyServices:(NSArray *)invalidatedServices {
+    for (CBService *service in invalidatedServices) {
+        NSLog(@("Service invalidated: %@"), service.UUID);
+        if ([service.UUID isEqual:cscServiceUUID]) {
+            NSLog(@"Canceling the peripheral connection");
+            [bluetoothManager cancelPeripheralConnection:peripheral];
+        }
+    }
+}
+
 - (void)centralManager:(CBCentralManager *)central didDisconnectPeripheral:(CBPeripheral *)peripheral error:(NSError *)error
 {
-    // Scanner uses other queue to send events. We must edit UI in the main queue
-    dispatch_async(dispatch_get_main_queue(), ^{
+    NSLog(@"Disconnected from peripheral %@", peripheral.description);
+    
+    peripheralConnected = FALSE;
+    
+    if (peripheralDisconnectedByUser) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            cyclePeripheral = nil;
+            
+            [self clearUI];
+            [[NSNotificationCenter defaultCenter] removeObserver:self name:UIApplicationDidBecomeActiveNotification object:nil];
+            [[NSNotificationCenter defaultCenter] removeObserver:self name:UIApplicationDidEnterBackgroundNotification object:nil];
+        });
+    } else {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [NSTimer scheduledTimerWithTimeInterval:1.0
+                                             target:self
+                                           selector:@selector(reconnectPeripheral:)
+                                           userInfo:peripheral
+                                            repeats:YES];
+        });
+    }
+}
+
+- (void)reconnectPeripheral:(NSTimer *)timer {
+    if (!peripheralConnected && peripheralReconnectTime < 20 && !peripheralDisconnectedByUser) {
+        cyclePeripheral = [timer userInfo];
+        cyclePeripheral.delegate = self;
+
+        NSLog(@"Reconnect peripheral for the %i time: %@", ++peripheralReconnectTime, cyclePeripheral.description);
         
-        cyclePeripheral = nil;
-        
-        [self clearUI];
-        [[NSNotificationCenter defaultCenter] removeObserver:self name:UIApplicationDidBecomeActiveNotification object:nil];
-        [[NSNotificationCenter defaultCenter] removeObserver:self name:UIApplicationDidEnterBackgroundNotification object:nil];
-    });
+        [bluetoothManager connectPeripheral:cyclePeripheral options:@{
+                                                                      CBCentralManagerOptionShowPowerAlertKey: @YES,
+                                                                      CBConnectPeripheralOptionNotifyOnDisconnectionKey: @YES,
+                                                                      CBConnectPeripheralOptionNotifyOnNotificationKey: @YES
+                                                                      }];
+    } else {
+        if (peripheralConnected) {
+            NSLog(@"Peripheral connected at the %i time, stop reconnect try", peripheralReconnectTime);
+        } else {
+            NSLog(@"Stop reconnect after %i try", peripheralReconnectTime);
+            
+            cyclePeripheral = nil;
+            
+            [self clearUI];
+            [[NSNotificationCenter defaultCenter] removeObserver:self name:UIApplicationDidBecomeActiveNotification object:nil];
+            [[NSNotificationCenter defaultCenter] removeObserver:self name:UIApplicationDidEnterBackgroundNotification object:nil];
+        }
+        peripheralReconnectTime = 0;
+        [timer invalidate];
+        timer = nil;
+    }
 }
 
 #pragma mark Peripheral delegate methods
@@ -303,11 +371,6 @@ const uint8_t CRANK_REVOLUTION_FLAG = 0x02;
             NSLog(@"error in update CSC value");
         }
     });
-}
-
-- (void)peripheral:(CBPeripheral *)peripheral didModifyServices:(NSArray *)invalidatedServices {
-    NSLog(@"******************Service Invalidated******************");
-    [bluetoothManager cancelPeripheralConnection:peripheral];
 }
 
 -(void)decodeCSCData:(NSData *)data
