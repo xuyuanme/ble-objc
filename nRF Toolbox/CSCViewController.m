@@ -263,7 +263,7 @@ const uint8_t CRANK_REVOLUTION_FLAG = 0x02;
 }
 
 - (void)reconnectPeripheral:(NSTimer *)timer {
-    if (!peripheralConnected && peripheralReconnectTime < 20 && !peripheralDisconnectedByUser) {
+    if (!peripheralConnected && !peripheralDisconnectedByUser) {
         cyclePeripheral = [timer userInfo];
         cyclePeripheral.delegate = self;
 
