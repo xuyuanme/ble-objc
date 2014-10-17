@@ -20,8 +20,6 @@
     double travelDistance, oldWheelEventTime, totalTravelDistance, oldCrankEventTime;
     double wheelCircumference;
     BOOL isBackButtonPressed;
-    int peripheralReconnectTime;
-    BOOL peripheralConnected;
     BOOL peripheralDisconnectedByUser;
 }
 
@@ -92,8 +90,6 @@ const uint8_t CRANK_REVOLUTION_FLAG = 0x02;
     NSLog(@"circumference: %f",wheelCircumference);
     isBackButtonPressed = YES;
     
-    peripheralReconnectTime = 0;
-    peripheralConnected = FALSE;
     peripheralDisconnectedByUser = FALSE;
 }
 
@@ -199,7 +195,6 @@ const uint8_t CRANK_REVOLUTION_FLAG = 0x02;
 - (void)centralManager:(CBCentralManager *)central didConnectPeripheral:(CBPeripheral *)peripheral
 {
     [[NSUserDefaults standardUserDefaults] setObject:[peripheral.identifier UUIDString] forKey:lastConnectedPeripheralKey];
-    peripheralConnected = TRUE;
     peripheralDisconnectedByUser = FALSE;
     
     // Scanner uses other queue to send events. We must edit UI in the main queue
@@ -240,9 +235,7 @@ const uint8_t CRANK_REVOLUTION_FLAG = 0x02;
 - (void)centralManager:(CBCentralManager *)central didDisconnectPeripheral:(CBPeripheral *)peripheral error:(NSError *)error
 {
     NSLog(@"Disconnected from peripheral %@", peripheral.description);
-    
-    peripheralConnected = FALSE;
-    
+
     if (peripheralDisconnectedByUser) {
         dispatch_async(dispatch_get_main_queue(), ^{
             cyclePeripheral = nil;
@@ -252,43 +245,16 @@ const uint8_t CRANK_REVOLUTION_FLAG = 0x02;
             [[NSNotificationCenter defaultCenter] removeObserver:self name:UIApplicationDidEnterBackgroundNotification object:nil];
         });
     } else {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            [NSTimer scheduledTimerWithTimeInterval:1.0
-                                             target:self
-                                           selector:@selector(reconnectPeripheral:)
-                                           userInfo:peripheral
-                                            repeats:YES];
-        });
-    }
-}
-
-- (void)reconnectPeripheral:(NSTimer *)timer {
-    if (!peripheralConnected && !peripheralDisconnectedByUser) {
-        cyclePeripheral = [timer userInfo];
+        cyclePeripheral = peripheral;
         cyclePeripheral.delegate = self;
-
-        NSLog(@"Reconnect peripheral for the %i time: %@", ++peripheralReconnectTime, cyclePeripheral.description);
+        
+        NSLog(@"Waiting to reconnect peripheral %@", cyclePeripheral.description);
         
         [bluetoothManager connectPeripheral:cyclePeripheral options:@{
                                                                       CBCentralManagerOptionShowPowerAlertKey: @YES,
                                                                       CBConnectPeripheralOptionNotifyOnDisconnectionKey: @YES,
                                                                       CBConnectPeripheralOptionNotifyOnNotificationKey: @YES
                                                                       }];
-    } else {
-        if (peripheralConnected) {
-            NSLog(@"Peripheral connected at the %i time, stop reconnect try", peripheralReconnectTime);
-        } else {
-            NSLog(@"Stop reconnect after %i try", peripheralReconnectTime);
-            
-            cyclePeripheral = nil;
-            
-            [self clearUI];
-            [[NSNotificationCenter defaultCenter] removeObserver:self name:UIApplicationDidBecomeActiveNotification object:nil];
-            [[NSNotificationCenter defaultCenter] removeObserver:self name:UIApplicationDidEnterBackgroundNotification object:nil];
-        }
-        peripheralReconnectTime = 0;
-        [timer invalidate];
-        timer = nil;
     }
 }
 
