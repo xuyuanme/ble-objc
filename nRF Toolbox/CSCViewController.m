@@ -153,6 +153,9 @@ const uint8_t CRANK_REVOLUTION_FLAG = 0x02;
         controller.delegate = self;
     }
     else if ([[segue identifier] isEqualToString:@"help"]) {
+        // Simulate app killed by iOS to test CoreBluetooth state preservation
+        kill(getpid(), SIGKILL);
+        
         isBackButtonPressed = NO;
         HelpViewController *helpVC = [segue destinationViewController];
         helpVC.helpText = [NSString stringWithFormat: @"-CSC (Cycling Speed and Cadence) profile allows you to connect to your bike activity sensor.\n\n-It reads wheel and crank data if they are supported by the sensor and calculates speed, cadence, total and trip distance and gear ratio.\n\n-Default wheel size is 29 inches but you can set up wheel size in the iPhone Settings."];

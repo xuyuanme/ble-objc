@@ -8,11 +8,17 @@
 
 #import "AppDelegate.h"
 #import "DFUViewController.h"
+#import "Constants.h"
 
 @implementation AppDelegate
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
 {
+    // We want the scanner to scan with dupliate keys (to refresh RRSI every second) so it has to be done using non-main queue
+    dispatch_queue_t centralQueue = dispatch_queue_create("no.nordicsemi.ios.nrftoolbox", DISPATCH_QUEUE_SERIAL);
+    _bluetoothManager = [[CBCentralManager alloc]initWithDelegate:self queue:centralQueue
+                                                         options:@{ CBCentralManagerOptionRestoreIdentifierKey: centralManagerIdentifierKey}];
+    
     // Override point for customization after application launch.
     [[UINavigationBar appearance] setTintColor:[UIColor whiteColor]];
     UIImage *navBackgroundImage = [UIImage imageNamed:@"NavBarIOS7"];
@@ -34,6 +40,29 @@
     }
     
     return YES;
+}
+
+#pragma mark Central Manager delegate methods
+
+-(void)centralManagerDidUpdateState:(CBCentralManager *)central
+{
+    if (central.state == CBCentralManagerStatePoweredOn) {
+
+    }
+}
+
+- (void)centralManager:(CBCentralManager *)central willRestoreState:(NSDictionary *)state {
+    [AppDelegate sendNotification:@"centralManager willRestoreState" withAudio:@"notification.m4a"];
+    
+    NSArray *peripherals = state[CBCentralManagerRestoredStatePeripheralsKey];
+    _mainPeripheral = peripherals[0];
+    _mainPeripheral.delegate = self;
+
+    [_bluetoothManager connectPeripheral:_mainPeripheral options:@{
+                                                                  CBCentralManagerOptionShowPowerAlertKey: @YES,
+                                                                  CBConnectPeripheralOptionNotifyOnDisconnectionKey: @YES,
+                                                                  CBConnectPeripheralOptionNotifyOnNotificationKey: @YES
+                                                                  }];
 }
 
 - (BOOL) application:(UIApplication *)application openURL:(NSURL *)url sourceApplication:(NSString *)sourceApplication annotation:(id)annotation
@@ -62,7 +91,22 @@
                           ntohl(tokenBytes[6]), ntohl(tokenBytes[7])];
     NSLog(@"My token is: %@", hexToken);
 }
-							
+
++ (void)sendNotification:(NSString *)note withAudio:(NSString *)audioFileName{
+    UILocalNotification *notification = [[UILocalNotification alloc]init];
+    notification.hasAction = NO;
+    notification.fireDate = [NSDate dateWithTimeIntervalSinceNow:1];
+    notification.timeZone = [NSTimeZone  defaultTimeZone];
+    if (note) {
+        notification.alertAction = @"Show";
+        notification.alertBody = note;
+    }
+    if (audioFileName) {
+        notification.soundName = audioFileName;
+    }
+    [[UIApplication sharedApplication] setScheduledLocalNotifications:[NSArray arrayWithObject:notification]];
+}
+
 - (void)applicationWillResignActive:(UIApplication *)application
 {
     // Sent when the application is about to move from active to inactive state. This can occur for certain types of temporary interruptions (such as an incoming phone call or SMS message) or when the user quits the application and it begins the transition to the background state.

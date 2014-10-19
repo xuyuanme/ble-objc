@@ -8,6 +8,7 @@
 
 #import "ScannerViewController.h"
 #import "ScannedPeripheral.h"
+#import "AppDelegate.h"
 
 @interface ScannerViewController ()
 
@@ -48,10 +49,11 @@
     peripherals = [NSMutableArray arrayWithCapacity:8];
     devicesTable.delegate = self;
     devicesTable.dataSource = self;
-    
-    // We want the scanner to scan with dupliate keys (to refresh RRSI every second) so it has to be done using non-main queue
-    dispatch_queue_t centralQueue = dispatch_queue_create("no.nordicsemi.ios.nrftoolbox", DISPATCH_QUEUE_SERIAL);
-    bluetoothManager = [[CBCentralManager alloc]initWithDelegate:self queue:centralQueue];
+
+    bluetoothManager = [(AppDelegate *)[[UIApplication sharedApplication] delegate] bluetoothManager];
+    bluetoothManager.delegate = self;
+
+    [self scanForPeripherals:YES];
 }
 
 - (void)viewWillDisappear:(BOOL)animated
@@ -73,9 +75,9 @@
 
 -(void)centralManagerDidUpdateState:(CBCentralManager *)central
 {
-    if (central.state == CBCentralManagerStatePoweredOn) {
-        [self scanForPeripherals:YES];
-    }
+//    if (central.state == CBCentralManagerStatePoweredOn) {
+//        [self scanForPeripherals:YES];
+//    }
 }
 
 /*!

@@ -12,6 +12,7 @@
 #define is4InchesIPhone ([[UIScreen mainScreen] bounds].size.height == 568)
 
 static NSString * const lastConnectedPeripheralKey = @"LastConnectedPeripheral";
+static NSString * const centralManagerIdentifierKey = @"mainCentralManagerIdentifier";
 
 static NSString * const bgmServiceUUIDString = @"00001808-0000-1000-8000-00805F9B34FB";
 static NSString * const bgmGlucoseMeasurementCharacteristicUUIDString = @"00002A18-0000-1000-8000-00805F9B34FB";

@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1C5DEF8F19F35E3900FFE666 /* notification.m4a in Resources */ = {isa = PBXBuildFile; fileRef = 1C5DEF8E19F35E3900FFE666 /* notification.m4a */; };
 		5211EFAE18856430007CC40D /* icon-dfu-64.png in Resources */ = {isa = PBXBuildFile; fileRef = 5211EFAA1885642F007CC40D /* icon-dfu-64.png */; };
 		5211EFAF18856430007CC40D /* icon-dfu-320.png in Resources */ = {isa = PBXBuildFile; fileRef = 5211EFAB1885642F007CC40D /* icon-dfu-320.png */; };
 		5211EFB018856430007CC40D /* icon-hex.png in Resources */ = {isa = PBXBuildFile; fileRef = 5211EFAC1885642F007CC40D /* icon-hex.png */; };
@@ -78,6 +79,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		1C5DEF8E19F35E3900FFE666 /* notification.m4a */ = {isa = PBXFileReference; lastKnownFileType = file; name = notification.m4a; path = "nRF Toolbox/notification.m4a"; sourceTree = "<group>"; };
 		5211EFAA1885642F007CC40D /* icon-dfu-64.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "icon-dfu-64.png"; sourceTree = "<group>"; };
 		5211EFAB1885642F007CC40D /* icon-dfu-320.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "icon-dfu-320.png"; sourceTree = "<group>"; };
 		5211EFAC1885642F007CC40D /* icon-hex.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "icon-hex.png"; sourceTree = "<group>"; };
@@ -304,6 +306,7 @@
 		5217F3D91859EE0000F2D5BB = {
 			isa = PBXGroup;
 			children = (
+				1C5DEF8E19F35E3900FFE666 /* notification.m4a */,
 				7EE669111983C7DD004680F0 /* SSZipArchive */,
 				52E08DC01889448400ED959F /* CorePlot */,
 				5214D0CD1886C02A00460637 /* Settings.bundle */,
@@ -765,6 +768,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				7E6ED10B196ED482008010B6 /* firmwares in Resources */,
+				1C5DEF8F19F35E3900FFE666 /* notification.m4a in Resources */,
 				5214D0CE1886C02A00460637 /* Settings.bundle in Resources */,
 				5217F3FE1859EE0000F2D5BB /* Images.xcassets in Resources */,
 				7E1B422918A8DF4D006BA1BC /* high.mp3 in Resources */,
